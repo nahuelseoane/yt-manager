@@ -130,6 +130,28 @@ def cmd_tv_autoplay(args: argparse.Namespace) -> None:
     print(f"Autoplay {args.mode}")
 
 
+def cmd_tv_play_playlist(client: YouTubeClient, args: argparse.Namespace) -> None:
+    auth = tv.load_auth(tv.AUTH_FILE)  # fails before fetching or connecting
+    videos = client.list_playlist_videos(args.playlist_id)
+    if not videos:
+        print(f"Playlist {args.playlist_id} is empty. Nothing to play.", file=sys.stderr)
+        raise SystemExit(1)
+
+    progress = tv.Progress(videos)
+    debug = (lambda line: print(line, file=sys.stderr)) if args.debug else None
+
+    async def go() -> None:
+        async with tv.make_api() as api:
+            await tv.play_playlist(api, auth, tv.AUTH_FILE, progress, debug=debug)
+
+    try:
+        asyncio.run(go())
+    except KeyboardInterrupt:
+        print(f"\nStopped at {progress.label()}.")
+        raise SystemExit(130)
+    print("Playlist finished.")
+
+
 def volume_level(value: str) -> int:
     level = int(value)
     if not 0 <= level <= 100:
@@ -158,6 +180,12 @@ def add_tv_parser(sub) -> None:
     add("autoplay", cmd_tv_autoplay, "Turn autoplay on or off").add_argument(
         "mode", choices=["on", "off"]
     )
+
+    # Also reads the playlist through the Data API, so it needs the client.
+    p = tv_sub.add_parser("play-playlist", help="Play a whole playlist on the TV, in order")
+    p.add_argument("playlist_id")
+    p.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
+    p.set_defaults(func=cmd_tv_play_playlist)
 
 
 def build_parser() -> argparse.ArgumentParser:
