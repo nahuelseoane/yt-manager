@@ -20,7 +20,7 @@ developer moving into Python automation / QA automation.
 
 ## Commands
 
-- Install: `pip install -e ".[dev]"`
+- Install: `uv venv --python 3.12 && uv pip install -e ".[dev]"`
 - Tests: `pytest`
 - Run: `ytm --help`
 
