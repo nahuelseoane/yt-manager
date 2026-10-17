@@ -24,6 +24,10 @@ class NotPairedError(Exception):
     """No saved auth state: the user has to run `ytm tv pair CODE` first."""
 
 
+class InvalidAuthError(Exception):
+    """The saved auth file exists but can't be loaded (old format, corrupt)."""
+
+
 class TVError(Exception):
     """A lounge step failed. The message is meant for the user."""
 
@@ -41,6 +45,13 @@ def make_api() -> YtLoungeApi:
     return YtLoungeApi(DEVICE_NAME, logger=_quiet_logger())
 
 
+def auth_state(api) -> dict:
+    # Use auth.serialize(), not store_auth_state(): in pyytlounge 3.4.0,
+    # store_auth_state() returns a format that load_auth_state() can't read
+    # (no "version", different key names).
+    return api.auth.serialize()
+
+
 def save_auth(path: Path, data: dict) -> None:
     # The file holds the lounge token, so keep it private.
     path.write_text(json.dumps(data, indent=2))
@@ -53,7 +64,7 @@ def load_auth(path: Path) -> dict:
     try:
         return json.loads(path.read_text())
     except json.JSONDecodeError:
-        raise TVError(f"{path} is not valid JSON. Pair again with `ytm tv pair CODE`.")
+        raise InvalidAuthError
 
 
 async def pair(api, code: str, path: Path) -> str:
@@ -65,13 +76,16 @@ async def pair(api, code: str, path: Path) -> str:
         linked = False
     if not linked:
         raise TVError("Pairing failed. Check the code shown on the TV and try again.")
-    save_auth(path, api.store_auth_state())
+    save_auth(path, auth_state(api))
     return api.screen_name
 
 
 async def send(api, auth: dict, path: Path, action: Action) -> None:
     """Refresh the token, connect and run one command on the TV."""
-    api.load_auth_state(auth)
+    try:
+        api.load_auth_state(auth)
+    except (KeyError, ValueError, TypeError):
+        raise InvalidAuthError
     try:
         refreshed = await api.refresh_auth()
     except (KeyError, IndexError, ValueError):
@@ -79,7 +93,7 @@ async def send(api, auth: dict, path: Path, action: Action) -> None:
     if not refreshed:
         raise TVError("Couldn't refresh the TV login. Pair again with `ytm tv pair CODE`.")
     # The lounge token can change on refresh, so save it before going on.
-    save_auth(path, api.store_auth_state())
+    save_auth(path, auth_state(api))
 
     if not await api.connect():
         raise TVError("Couldn't connect to the TV. Is the YouTube app open?")

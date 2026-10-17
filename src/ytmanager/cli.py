@@ -206,6 +206,9 @@ def main(argv: list[str] | None = None) -> None:
     except tv.NotPairedError:
         print("Run `ytm tv pair CODE` first.", file=sys.stderr)
         raise SystemExit(1)
+    except tv.InvalidAuthError:
+        print("Saved TV login is invalid. Run ytm tv pair CODE again.", file=sys.stderr)
+        raise SystemExit(1)
     except tv.TVError as e:
         print(f"Error: {e}", file=sys.stderr)
         raise SystemExit(1)
