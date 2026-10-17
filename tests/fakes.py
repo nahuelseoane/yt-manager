@@ -19,7 +19,8 @@ class FakeResource:
     """Serves pages keyed by pageToken (None = first page) and records calls.
 
     `error`, if set, is raised by every request. `delete_errors` maps an id
-    to the exception its delete should raise.
+    to the exception its delete should raise. `insert_response` is what
+    insert() returns (e.g. the created playlist with its id).
     """
 
     def __init__(
@@ -27,8 +28,10 @@ class FakeResource:
         pages: dict | None = None,
         delete_errors: dict | None = None,
         error: Exception | None = None,
+        insert_response: dict | None = None,
     ):
         self.pages = pages or {None: {"items": []}}
+        self.insert_response = insert_response or {}
         self.delete_errors = delete_errors or {}
         self.error = error
         self.calls: list[tuple[str, dict]] = []
@@ -39,7 +42,7 @@ class FakeResource:
 
     def insert(self, **params):
         self.calls.append(("insert", params))
-        return FakeRequest({}, self.error)
+        return FakeRequest(self.insert_response, self.error)
 
     def delete(self, **params):
         self.calls.append(("delete", params))
