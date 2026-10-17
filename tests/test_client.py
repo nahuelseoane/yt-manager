@@ -161,3 +161,32 @@ def test_create_playlist_sends_description_and_privacy():
     body = resource.calls[0][1]["body"]
     assert body["snippet"]["description"] == "Songs for the car"
     assert body["status"]["privacyStatus"] == "public"
+
+
+ESCAPED = "Chill Study Beats &amp; Jazz | 90&#39;s Mix"
+UNESCAPED = "Chill Study Beats & Jazz | 90's Mix"
+
+
+def test_search_unescapes_html_in_title_and_channel():
+    resource = FakeResource(
+        {None: {"items": [{"id": {"videoId": "abc"}, "snippet": {"title": ESCAPED, "channelTitle": "Rock &amp; Co"}}]}}
+    )
+    client = YouTubeClient(FakeService(search=resource))
+
+    assert client.search_videos("q") == [Video("abc", UNESCAPED, "Rock & Co")]
+
+
+def test_playlist_items_unescape_html_in_title():
+    resource = FakeResource({None: {"items": [playlist_item("abc", ESCAPED, "Rock &amp; Co")]}})
+    client = YouTubeClient(FakeService(playlist_items=resource))
+
+    assert client.list_playlist_videos("PL1") == [Video("abc", UNESCAPED, "Rock & Co")]
+
+
+def test_playlists_unescape_html_in_title():
+    resource = FakeResource(
+        {None: {"items": [{"id": "PL1", "snippet": {"title": ESCAPED}, "contentDetails": {"itemCount": 1}}]}}
+    )
+    client = YouTubeClient(FakeService(playlists=resource))
+
+    assert client.list_playlists() == [Playlist("PL1", UNESCAPED, 1)]

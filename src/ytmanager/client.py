@@ -4,6 +4,7 @@ The client receives the service object instead of creating it, so tests can
 pass a fake service and never touch the network.
 """
 
+import html
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
@@ -48,6 +49,11 @@ def _paginate(list_method: Callable, **params) -> Iterator[dict]:
             return
 
 
+def _text(value: str) -> str:
+    """The API returns some text HTML-escaped (e.g. "Rock &amp; Roll")."""
+    return html.unescape(value)
+
+
 def find_duplicates(items: list[PlaylistItem]) -> list[PlaylistItem]:
     """Return every repeated entry, keeping the first occurrence of each video."""
     seen: set[str] = set()
@@ -74,7 +80,7 @@ class YouTubeClient:
         return [
             Playlist(
                 id=item["id"],
-                title=item["snippet"]["title"],
+                title=_text(item["snippet"]["title"]),
                 item_count=item["contentDetails"]["itemCount"],
             )
             for item in items
@@ -92,9 +98,9 @@ class YouTubeClient:
                 item_id=item["id"],
                 video=Video(
                     video_id=item["snippet"]["resourceId"]["videoId"],
-                    title=item["snippet"]["title"],
+                    title=_text(item["snippet"]["title"]),
                     # Deleted or private videos have no owner channel.
-                    channel=item["snippet"].get("videoOwnerChannelTitle", ""),
+                    channel=_text(item["snippet"].get("videoOwnerChannelTitle", "")),
                 ),
             )
             for item in items
@@ -113,8 +119,8 @@ class YouTubeClient:
         return [
             Video(
                 video_id=item["id"]["videoId"],
-                title=item["snippet"]["title"],
-                channel=item["snippet"]["channelTitle"],
+                title=_text(item["snippet"]["title"]),
+                channel=_text(item["snippet"]["channelTitle"]),
             )
             for item in response.get("items", [])
         ]
