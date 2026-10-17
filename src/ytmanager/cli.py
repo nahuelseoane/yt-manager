@@ -38,6 +38,11 @@ def cmd_add(client: YouTubeClient, args: argparse.Namespace) -> None:
     print(f"Added {args.video_id} to {args.playlist_id}")
 
 
+def cmd_create_playlist(client: YouTubeClient, args: argparse.Namespace) -> None:
+    playlist_id = client.create_playlist(args.title, args.description, args.privacy)
+    print(f"Created {args.privacy} playlist {playlist_id}: {args.title}")
+
+
 def cmd_remove_duplicates(client: YouTubeClient, args: argparse.Namespace) -> None:
     duplicates = find_duplicates(client.list_playlist_items(args.playlist_id))
     if not duplicates:
@@ -167,6 +172,26 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("playlist_id")
     p.add_argument("video_id")
     p.set_defaults(func=cmd_add)
+
+    p = sub.add_parser("create-playlist", help="Create a playlist (private by default)")
+    p.add_argument("title")
+    p.add_argument("--description", default="", help="Playlist description")
+    privacy = p.add_mutually_exclusive_group()
+    privacy.add_argument(
+        "--private",
+        dest="privacy",
+        action="store_const",
+        const="private",
+        help="Only you can see it (default)",
+    )
+    privacy.add_argument(
+        "--public",
+        dest="privacy",
+        action="store_const",
+        const="public",
+        help="Anyone can find and see it",
+    )
+    p.set_defaults(func=cmd_create_playlist, privacy="private")
 
     p = sub.add_parser(
         "remove-duplicates", help="Remove repeated videos from a playlist"

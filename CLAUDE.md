@@ -42,5 +42,4 @@ developer moving into Python automation / QA automation.
 ## Ideas / backlog
 
 - `copy PLAYLIST_A PLAYLIST_B`
-- `create-playlist TITLE`
 - Import a CSV of songs: search each one and add the top result

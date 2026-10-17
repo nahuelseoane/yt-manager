@@ -128,6 +128,19 @@ class YouTubeClient:
         }
         self._service.playlistItems().insert(part="snippet", body=body).execute()
 
+    def create_playlist(
+        self, title: str, description: str = "", privacy: str = "private"
+    ) -> str:
+        """Create a playlist and return its ID. Costs 50 quota units."""
+        body = {
+            "snippet": {"title": title, "description": description},
+            "status": {"privacyStatus": privacy},
+        }
+        response = (
+            self._service.playlists().insert(part="snippet,status", body=body).execute()
+        )
+        return response["id"]
+
     def delete_playlist_item(self, item_id: str) -> None:
         # Note: each delete costs 50 quota units.
         self._service.playlistItems().delete(id=item_id).execute()

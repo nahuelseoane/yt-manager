@@ -180,3 +180,40 @@ def test_remove_duplicates_keeps_its_own_error_report(monkeypatch, capsys):
     assert code == 1
     assert "Removed 1 of 3" in err
     assert "YouTube API request failed" not in err
+
+
+# --- create-playlist ---
+
+
+def run_create(monkeypatch, argv):
+    resource = FakeResource(insert_response={"id": "PLnew"})
+    monkeypatch.setattr("ytmanager.cli.build_service", lambda *_: FakeService(playlists=resource))
+    main(["create-playlist", *argv])
+    return resource.calls[0][1]["body"]
+
+
+def test_create_playlist_is_private_by_default(monkeypatch, capsys):
+    body = run_create(monkeypatch, ["Road trip"])
+
+    assert body["status"]["privacyStatus"] == "private"
+    assert body["snippet"] == {"title": "Road trip", "description": ""}
+    assert capsys.readouterr().out.strip() == "Created private playlist PLnew: Road trip"
+
+
+def test_create_playlist_public_with_description(monkeypatch, capsys):
+    body = run_create(monkeypatch, ["Road trip", "--public", "--description", "Car songs"])
+
+    assert body["status"]["privacyStatus"] == "public"
+    assert body["snippet"]["description"] == "Car songs"
+    assert "Created public playlist PLnew" in capsys.readouterr().out
+
+
+def test_create_playlist_rejects_private_and_public_together(monkeypatch):
+    monkeypatch.setattr(
+        "ytmanager.cli.build_service", lambda *_: pytest.fail("must not call the API")
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        main(["create-playlist", "Road trip", "--private", "--public"])
+
+    assert exc.value.code == 2

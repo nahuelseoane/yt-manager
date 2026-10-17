@@ -134,3 +134,30 @@ def test_delete_playlist_item_sends_item_id():
     client.delete_playlist_item("i1")
 
     assert resource.calls == [("delete", {"id": "i1"})]
+
+
+def test_create_playlist_defaults_to_private_and_returns_id():
+    resource = FakeResource(insert_response={"id": "PLnew"})
+    client = YouTubeClient(FakeService(playlists=resource))
+
+    playlist_id = client.create_playlist("Road trip")
+
+    assert playlist_id == "PLnew"
+    method, params = resource.calls[0]
+    assert method == "insert"
+    assert params["part"] == "snippet,status"
+    assert params["body"] == {
+        "snippet": {"title": "Road trip", "description": ""},
+        "status": {"privacyStatus": "private"},
+    }
+
+
+def test_create_playlist_sends_description_and_privacy():
+    resource = FakeResource(insert_response={"id": "PLnew"})
+    client = YouTubeClient(FakeService(playlists=resource))
+
+    client.create_playlist("Road trip", "Songs for the car", "public")
+
+    body = resource.calls[0][1]["body"]
+    assert body["snippet"]["description"] == "Songs for the car"
+    assert body["status"]["privacyStatus"] == "public"

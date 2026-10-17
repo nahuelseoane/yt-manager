@@ -10,6 +10,7 @@ A Python CLI to manage your YouTube playlists and control the YouTube app on you
 - **Export**: save a playlist to CSV (title, channel, URL).
 - **Search**: find videos by text.
 - **Add**: add a video to a playlist.
+- **Create playlist**: create a new playlist (private by default) and print its ID.
 - **Remove duplicates**: find repeated videos in a playlist and remove them, with `--dry-run` to preview and a confirmation prompt before anything is deleted.
 - **TV remote**: pair with your TV and play, pause, resume, skip and set the volume.
 
@@ -52,6 +53,7 @@ ytm playlists
 ytm export PLAYLIST_ID [-o FILE]            # default: exports/<id>.csv
 ytm search "QUERY" [--max N]                # default: 5 results
 ytm add PLAYLIST_ID VIDEO_ID
+ytm create-playlist TITLE [--description TEXT] [--private | --public]
 ytm remove-duplicates PLAYLIST_ID [--dry-run] [-y]
 ytm tv pair CODE
 ytm tv play VIDEO_ID
