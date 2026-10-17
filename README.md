@@ -1,5 +1,7 @@
 # yt-manager
 
+[![tests](https://github.com/nahuelseoane/yt-manager/actions/workflows/tests.yml/badge.svg)](https://github.com/nahuelseoane/yt-manager/actions/workflows/tests.yml)
+
 A Python CLI to manage your YouTube playlists and control the YouTube app on your TV from the terminal.
 
 ## Features
