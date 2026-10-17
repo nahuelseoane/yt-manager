@@ -75,7 +75,7 @@ ytm tv play-playlist PLAYLIST_ID
 
 ## Found along the way
 
-In pyytlounge 3.4.0, `store_auth_state()` returns `{screenId, lounge_id_token, refresh_token}`, but `load_auth_state()` expects `{version, screenId, loungeIdToken, refreshToken, expiry}`. Loading the saved state fails with `KeyError: 'version'` on the first command after pairing.
+In pyytlounge 3.4.0, `store_auth_state()` returns `{screenId, lounge_id_token, refresh_token}`, but `load_auth_state()` expects `{version, screenId, loungeIdToken, refreshToken, expiry}`. Loading the saved state fails with `KeyError: 'version'` on the first command after pairing. Reported upstream as [pyytlounge#30](https://github.com/FabioGNR/pyytlounge/issues/30).
 
 The unit tests missed it because the fake accepted any dict. The fix:
 

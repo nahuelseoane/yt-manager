@@ -58,6 +58,7 @@ def auth_state(api) -> dict:
     # Use auth.serialize(), not store_auth_state(): in pyytlounge 3.4.0,
     # store_auth_state() returns a format that load_auth_state() can't read
     # (no "version", different key names).
+    # https://github.com/FabioGNR/pyytlounge/issues/30
     return api.auth.serialize()
 
 
