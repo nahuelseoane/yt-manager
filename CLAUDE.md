@@ -43,6 +43,3 @@ developer moving into Python automation / QA automation.
 
 - `copy PLAYLIST_A PLAYLIST_B`
 - Import a CSV of songs: search each one and add the top result
-- Experiment: `ytm tv play-playlist PLAYLIST_ID` to play a whole playlist on the
-  TV in order. pyytlounge has no public method for it, so it would rely on the
-  private `_command("setPlaylist", ...)` and may break on library updates.

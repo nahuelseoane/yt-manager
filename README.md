@@ -13,6 +13,7 @@ A Python CLI to manage your YouTube playlists and control the YouTube app on you
 - **Create playlist**: create a new playlist (private by default) and print its ID.
 - **Remove duplicates**: find repeated videos in a playlist and remove them, with `--dry-run` to preview and a confirmation prompt before anything is deleted.
 - **TV remote**: pair with your TV and play, pause, resume, skip, set the volume and turn autoplay on or off.
+- **Play a playlist on the TV**: plays every video of a playlist in order, with autoplay off so the TV doesn't wander off to suggestions.
 
 ## Demo
 
@@ -60,13 +61,14 @@ ytm tv play VIDEO_ID
 ytm tv pause | resume | next | previous
 ytm tv volume N                             # 0-100
 ytm tv autoplay on|off
+ytm tv play-playlist PLAYLIST_ID
 ```
 
 ## Tech & design highlights
 
 - **YouTube Data API v3 + OAuth 2.0** (installed-app flow). The token is cached in `token.json`, and paginated list calls go through a single helper.
 - **Dependency injection for testability**: `YouTubeClient` receives the API service, and the TV functions receive the lounge API object, so tests can pass in fakes.
-- **Tests with fakes, no network**: a fake service mimics the `service.resource().method(**params).execute()` chain, and a fake lounge API uses the library's real auth data class. 46 pytest tests run offline.
+- **Tests with fakes, no network**: a fake service mimics the `service.resource().method(**params).execute()` chain, and a fake lounge API uses the library's real auth data class. 88 pytest tests run offline.
 - **Safe destructive operations**: `remove-duplicates` offers `--dry-run`, shows the quota cost and asks before deleting. If one delete fails partway through, it stops and reports how many were removed.
 - **Readable error handling**: API errors, network errors and invalid saved logins become one-line messages with exit code 1, not tracebacks.
 - **Async TV control** through the unofficial YouTube Lounge API ([pyytlounge](https://github.com/FabioGNR/pyytlounge)), run with `asyncio.run`. It lives in its own module, separate from the Data API client, and TV commands never start the Google login.
@@ -127,6 +129,31 @@ ytm tv pair CODE
 This saves `tv_auth.json` (gitignored). It holds the TV's login token, so
 treat it like `token.json`: don't share or commit it. The YouTube app must be
 open on the TV when you send a command.
+
+### Playing a playlist on the TV
+
+```bash
+$ ytm tv play-playlist PLxxxxxxxx
+▶ 1/3  First song
+▶ 2/3  Second song
+▶ 3/3  Third song
+Playlist finished.
+```
+
+**Keep the terminal open and the computer on (not asleep) while it plays.** The
+TV only plays one video at a time; `ytm` watches for each one to end and sends
+the next. If the computer sleeps or the terminal closes, the TV stops after
+the current video.
+
+- It turns autoplay off at the start and leaves it off.
+- If the connection drops, it tries to reconnect 3 times, then stops and
+  says which video it was on.
+- A video that doesn't start within 30 seconds (deleted, private, blocked) is
+  skipped.
+- If you play something outside the playlist on the TV, it stops. Jumping to
+  another video of the same playlist is fine: it carries on from there.
+- Ctrl+C stops it and prints where it was. The TV keeps playing the current
+  video.
 
 ## Running tests
 
