@@ -16,7 +16,7 @@ TOKEN = Path("token.json")
 
 def cmd_playlists(client: YouTubeClient, args: argparse.Namespace) -> None:
     for p in client.list_playlists():
-        print(f"{p.id}  {p.item_count:>4}  {p.title}")
+        print(f"{p.id:<36}  {p.item_count:>4}  {p.title}")
 
 
 def cmd_export(client: YouTubeClient, args: argparse.Namespace) -> None:
@@ -90,10 +90,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("video_id")
     p.set_defaults(func=cmd_add)
 
-    p = sub.add_parser("remove-duplicates", help="Remove repeated videos from a playlist")
+    p = sub.add_parser(
+        "remove-duplicates", help="Remove repeated videos from a playlist"
+    )
     p.add_argument("playlist_id")
-    p.add_argument("--dry-run", action="store_true", help="Only show what would be removed")
-    p.add_argument("-y", "--yes", action="store_true", help="Don't ask for confirmation")
+    p.add_argument(
+        "--dry-run", action="store_true", help="Only show what would be removed"
+    )
+    p.add_argument(
+        "-y", "--yes", action="store_true", help="Don't ask for confirmation"
+    )
     p.set_defaults(func=cmd_remove_duplicates)
 
     return parser
