@@ -7,6 +7,8 @@ ytm playlists                           # list your playlists
 ytm export PLAYLIST_ID                  # export a playlist to exports/<id>.csv
 ytm search "faroeste caboclo natiruts"  # search videos
 ytm add PLAYLIST_ID VIDEO_ID            # add a video to a playlist
+ytm remove-duplicates PLAYLIST_ID --dry-run  # show repeated videos
+ytm remove-duplicates PLAYLIST_ID       # remove them (asks first; -y to skip)
 ```
 
 ## Google Cloud setup (one time, ~10 minutes)
@@ -53,4 +55,4 @@ Tests use a fake service, so they run offline and never touch your account.
 ## Quota
 
 The API gives 10,000 units per day by default. Most reads cost 1 unit,
-adding to a playlist costs 50, and **a search costs 100**.
+adding to or removing from a playlist costs 50, and **a search costs 100**.

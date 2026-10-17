@@ -39,7 +39,6 @@ developer moving into Python automation / QA automation.
 
 ## Ideas / backlog
 
-- `remove-duplicates PLAYLIST_ID` (with `--dry-run`)
 - `copy PLAYLIST_A PLAYLIST_B`
 - `create-playlist TITLE`
 - Import a CSV of songs: search each one and add the top result

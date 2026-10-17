@@ -1,10 +1,13 @@
 """Command-line interface: `ytm <command> ...`."""
 
 import argparse
+import sys
 from pathlib import Path
 
+from googleapiclient.errors import HttpError
+
 from ytmanager.auth import build_service
-from ytmanager.client import YouTubeClient
+from ytmanager.client import YouTubeClient, find_duplicates
 from ytmanager.export import export_to_csv
 
 CLIENT_SECRET = Path("client_secret.json")
@@ -32,6 +35,39 @@ def cmd_add(client: YouTubeClient, args: argparse.Namespace) -> None:
     print(f"Added {args.video_id} to {args.playlist_id}")
 
 
+def cmd_remove_duplicates(client: YouTubeClient, args: argparse.Namespace) -> None:
+    duplicates = find_duplicates(client.list_playlist_items(args.playlist_id))
+    if not duplicates:
+        print("No duplicates found.")
+        return
+
+    for item in duplicates:
+        print(f"{item.item_id}  {item.video.video_id}  {item.video.title}")
+
+    if args.dry_run:
+        print(f"Dry run: would remove {len(duplicates)} item(s).")
+        return
+
+    print(f"Quota: this uses {len(duplicates) * 50} units (50 per delete).")
+    if not args.yes:
+        answer = input(f"Remove {len(duplicates)} duplicate(s)? [y/N] ")
+        if answer.strip().lower() not in ("y", "yes"):
+            print("Cancelled.")
+            return
+
+    for removed, item in enumerate(duplicates):
+        try:
+            client.delete_playlist_item(item.item_id)
+        except HttpError as e:
+            print(
+                f"Error deleting {item.item_id}: {e}. "
+                f"Removed {removed} of {len(duplicates)} before stopping.",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+    print(f"Removed {len(duplicates)} duplicate(s).")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ytm", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -53,6 +89,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("playlist_id")
     p.add_argument("video_id")
     p.set_defaults(func=cmd_add)
+
+    p = sub.add_parser("remove-duplicates", help="Remove repeated videos from a playlist")
+    p.add_argument("playlist_id")
+    p.add_argument("--dry-run", action="store_true", help="Only show what would be removed")
+    p.add_argument("-y", "--yes", action="store_true", help="Don't ask for confirmation")
+    p.set_defaults(func=cmd_remove_duplicates)
 
     return parser
 

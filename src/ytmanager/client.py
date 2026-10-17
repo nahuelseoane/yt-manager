@@ -26,6 +26,14 @@ class Video:
         return f"https://www.youtube.com/watch?v={self.video_id}"
 
 
+@dataclass(frozen=True)
+class PlaylistItem:
+    """A video's entry in a playlist. `item_id` is what delete() needs."""
+
+    item_id: str
+    video: Video
+
+
 def _paginate(list_method: Callable, **params) -> Iterator[dict]:
     """Yield every item across all pages of a list() call."""
     page_token = None
@@ -38,6 +46,18 @@ def _paginate(list_method: Callable, **params) -> Iterator[dict]:
         page_token = response.get("nextPageToken")
         if not page_token:
             return
+
+
+def find_duplicates(items: list[PlaylistItem]) -> list[PlaylistItem]:
+    """Return every repeated entry, keeping the first occurrence of each video."""
+    seen: set[str] = set()
+    duplicates = []
+    for item in items:
+        if item.video.video_id in seen:
+            duplicates.append(item)
+        else:
+            seen.add(item.video.video_id)
+    return duplicates
 
 
 class YouTubeClient:
@@ -60,7 +80,7 @@ class YouTubeClient:
             for item in items
         ]
 
-    def list_playlist_videos(self, playlist_id: str) -> list[Video]:
+    def list_playlist_items(self, playlist_id: str) -> list[PlaylistItem]:
         items = _paginate(
             self._service.playlistItems().list,
             part="snippet",
@@ -68,14 +88,20 @@ class YouTubeClient:
             maxResults=50,
         )
         return [
-            Video(
-                video_id=item["snippet"]["resourceId"]["videoId"],
-                title=item["snippet"]["title"],
-                # Deleted or private videos have no owner channel.
-                channel=item["snippet"].get("videoOwnerChannelTitle", ""),
+            PlaylistItem(
+                item_id=item["id"],
+                video=Video(
+                    video_id=item["snippet"]["resourceId"]["videoId"],
+                    title=item["snippet"]["title"],
+                    # Deleted or private videos have no owner channel.
+                    channel=item["snippet"].get("videoOwnerChannelTitle", ""),
+                ),
             )
             for item in items
         ]
+
+    def list_playlist_videos(self, playlist_id: str) -> list[Video]:
+        return [item.video for item in self.list_playlist_items(playlist_id)]
 
     def search_videos(self, query: str, max_results: int = 5) -> list[Video]:
         # Note: each search costs 100 quota units (daily default: 10,000).
@@ -101,3 +127,7 @@ class YouTubeClient:
             }
         }
         self._service.playlistItems().insert(part="snippet", body=body).execute()
+
+    def delete_playlist_item(self, item_id: str) -> None:
+        # Note: each delete costs 50 quota units.
+        self._service.playlistItems().delete(id=item_id).execute()
