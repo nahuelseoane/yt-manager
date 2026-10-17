@@ -124,6 +124,12 @@ def cmd_tv_volume(args: argparse.Namespace) -> None:
     print(f"Volume set to {args.level}")
 
 
+def cmd_tv_autoplay(args: argparse.Namespace) -> None:
+    enabled = args.mode == "on"
+    run_tv(lambda api: api.set_auto_play_mode(enabled))
+    print(f"Autoplay {args.mode}")
+
+
 def volume_level(value: str) -> int:
     level = int(value)
     if not 0 <= level <= 100:
@@ -148,6 +154,9 @@ def add_tv_parser(sub) -> None:
     add("previous", cmd_tv_previous, "Previous video")
     add("volume", cmd_tv_volume, "Set volume (0-100)").add_argument(
         "level", type=volume_level
+    )
+    add("autoplay", cmd_tv_autoplay, "Turn autoplay on or off").add_argument(
+        "mode", choices=["on", "off"]
     )
 
 

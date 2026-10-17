@@ -12,7 +12,7 @@ A Python CLI to manage your YouTube playlists and control the YouTube app on you
 - **Add**: add a video to a playlist.
 - **Create playlist**: create a new playlist (private by default) and print its ID.
 - **Remove duplicates**: find repeated videos in a playlist and remove them, with `--dry-run` to preview and a confirmation prompt before anything is deleted.
-- **TV remote**: pair with your TV and play, pause, resume, skip and set the volume.
+- **TV remote**: pair with your TV and play, pause, resume, skip, set the volume and turn autoplay on or off.
 
 ## Demo
 
@@ -59,6 +59,7 @@ ytm tv pair CODE
 ytm tv play VIDEO_ID
 ytm tv pause | resume | next | previous
 ytm tv volume N                             # 0-100
+ytm tv autoplay on|off
 ```
 
 ## Tech & design highlights

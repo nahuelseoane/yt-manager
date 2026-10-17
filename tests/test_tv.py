@@ -77,6 +77,10 @@ class FakeLoungeApi:
         self.calls.append(("pause",))
         return self.command_result
 
+    async def set_auto_play_mode(self, enabled):
+        self.calls.append(("set_auto_play_mode", enabled))
+        return self.command_result
+
     async def set_volume(self, volume):
         self.calls.append(("set_volume", volume))
         return self.command_result
@@ -267,6 +271,41 @@ def test_tv_volume_rejects_out_of_range(level, auth_path, monkeypatch):
         main(["tv", "volume", level])
 
     assert exc.value.code == 2  # argparse usage error
+
+
+@pytest.mark.parametrize("mode, enabled", [("on", True), ("off", False)])
+def test_tv_autoplay_sends_bool(mode, enabled, auth_path, monkeypatch, capsys):
+    tv.save_auth(auth_path, AUTH)
+    api = FakeLoungeApi()
+    monkeypatch.setattr(tv, "make_api", lambda: api)
+
+    main(["tv", "autoplay", mode])
+
+    assert api.calls[-1] == ("set_auto_play_mode", enabled)
+    assert capsys.readouterr().out.strip() == f"Autoplay {mode}"
+
+
+@pytest.mark.parametrize("mode", ["yes", "ON", "1"])
+def test_tv_autoplay_rejects_other_values(mode, auth_path, monkeypatch):
+    monkeypatch.setattr(tv, "make_api", lambda: pytest.fail("must not create the API"))
+
+    with pytest.raises(SystemExit) as exc:
+        main(["tv", "autoplay", mode])
+
+    assert exc.value.code == 2  # argparse usage error
+
+
+def test_tv_autoplay_rejected_by_tv_exits_with_error(auth_path, monkeypatch, capsys):
+    tv.save_auth(auth_path, AUTH)
+    monkeypatch.setattr(tv, "make_api", lambda: FakeLoungeApi(command=False))
+
+    with pytest.raises(SystemExit) as exc:
+        main(["tv", "autoplay", "off"])
+
+    captured = capsys.readouterr()
+    assert exc.value.code == 1
+    assert captured.err.strip() == "Error: The TV didn't accept the command."
+    assert captured.out == ""
 
 
 def test_tv_error_exits_with_readable_message(auth_path, monkeypatch, capsys):
