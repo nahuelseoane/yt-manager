@@ -5,7 +5,7 @@ from fakes import FakeResource, FakeService
 from googleapiclient.errors import HttpError
 from httplib2 import Response
 
-from ytmanager.cli import cmd_remove_duplicates
+from ytmanager.cli import cmd_remove_duplicates, format_http_error, main
 from ytmanager.client import YouTubeClient
 
 
@@ -98,3 +98,85 @@ def test_failed_delete_stops_and_reports_progress(capsys):
     assert exc.value.code == 1
     assert deleted_ids(resource) == ["i3", "i4"]  # i5 never attempted
     assert "Removed 1 of 3" in capsys.readouterr().err
+
+
+# --- API errors handled in main() ---
+
+
+def http_error(status, content, reason="Forbidden"):
+    resp = Response({"status": status})
+    resp.reason = reason  # Response ignores a "reason" key in the dict
+    return HttpError(resp, content)
+
+
+QUOTA_ERROR = http_error(
+    403,
+    b'{"error": {"code": 403, "message": "You have exceeded your quota.",'
+    b' "errors": [{"reason": "quotaExceeded"}]}}',
+)
+
+
+def run_main(monkeypatch, argv, service):
+    monkeypatch.setattr("ytmanager.cli.build_service", lambda *_: service)
+    with pytest.raises(SystemExit) as exc:
+        main(argv)
+    return exc.value.code
+
+
+def test_format_http_error_uses_status_and_api_message():
+    assert format_http_error(QUOTA_ERROR) == (
+        "Error: YouTube API request failed (403): You have exceeded your quota."
+    )
+
+
+def test_format_http_error_falls_back_to_http_reason():
+    error = http_error(503, b"<html>oops</html>", reason="Service Unavailable")
+
+    assert format_http_error(error) == (
+        "Error: YouTube API request failed (503): Service Unavailable"
+    )
+
+
+def test_format_http_error_without_reason():
+    error = http_error(500, b"", reason=None)
+
+    assert format_http_error(error) == "Error: YouTube API request failed (500)"
+
+
+def test_api_error_on_read_command_exits_cleanly(monkeypatch, capsys):
+    service = FakeService(playlists=FakeResource(error=QUOTA_ERROR))
+
+    code = run_main(monkeypatch, ["playlists"], service)
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert captured.out == ""
+    assert captured.err.strip() == (
+        "Error: YouTube API request failed (403): You have exceeded your quota."
+    )
+
+
+def test_api_error_on_write_command_exits_cleanly(monkeypatch, capsys):
+    resource = FakeResource(error=QUOTA_ERROR)
+    service = FakeService(playlist_items=resource)
+
+    code = run_main(monkeypatch, ["add", "PL1", "vid1"], service)
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "Added" not in captured.out
+    assert "(403)" in captured.err
+    assert [method for method, _ in resource.calls] == ["insert"]
+
+
+def test_remove_duplicates_keeps_its_own_error_report(monkeypatch, capsys):
+    items = DUPLICATED + [item("i5", "a")]
+    resource = make_resource(items, delete_errors={"i4": QUOTA_ERROR})
+    service = FakeService(playlist_items=resource)
+
+    code = run_main(monkeypatch, ["remove-duplicates", "PL1", "--yes"], service)
+
+    err = capsys.readouterr().err
+    assert code == 1
+    assert "Removed 1 of 3" in err
+    assert "YouTube API request failed" not in err

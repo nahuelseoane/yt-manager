@@ -18,25 +18,32 @@ class FakeRequest:
 class FakeResource:
     """Serves pages keyed by pageToken (None = first page) and records calls.
 
-    `delete_errors` maps an id to the exception its delete should raise.
+    `error`, if set, is raised by every request. `delete_errors` maps an id
+    to the exception its delete should raise.
     """
 
-    def __init__(self, pages: dict | None = None, delete_errors: dict | None = None):
+    def __init__(
+        self,
+        pages: dict | None = None,
+        delete_errors: dict | None = None,
+        error: Exception | None = None,
+    ):
         self.pages = pages or {None: {"items": []}}
         self.delete_errors = delete_errors or {}
+        self.error = error
         self.calls: list[tuple[str, dict]] = []
 
     def list(self, **params):
         self.calls.append(("list", params))
-        return FakeRequest(self.pages[params.get("pageToken")])
+        return FakeRequest(self.pages[params.get("pageToken")], self.error)
 
     def insert(self, **params):
         self.calls.append(("insert", params))
-        return FakeRequest({})
+        return FakeRequest({}, self.error)
 
     def delete(self, **params):
         self.calls.append(("delete", params))
-        return FakeRequest({}, self.delete_errors.get(params["id"]))
+        return FakeRequest({}, self.error or self.delete_errors.get(params["id"]))
 
 
 class FakeService:

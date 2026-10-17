@@ -105,10 +105,21 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> None:
-    args = build_parser().parse_args()
-    client = YouTubeClient(build_service(CLIENT_SECRET, TOKEN))
-    args.func(client, args)
+def format_http_error(error: HttpError) -> str:
+    message = f"Error: YouTube API request failed ({error.status_code})"
+    if error.reason:
+        message += f": {error.reason}"
+    return message
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
+    try:
+        client = YouTubeClient(build_service(CLIENT_SECRET, TOKEN))
+        args.func(client, args)
+    except HttpError as e:
+        print(format_http_error(e), file=sys.stderr)
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
