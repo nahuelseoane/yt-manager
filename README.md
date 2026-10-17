@@ -44,6 +44,28 @@ saved so you don't have to log in again (also gitignored).
 in the terminal into your Windows browser. WSL2 forwards `localhost`, so the
 redirect back to the script works.
 
+## TV remote
+
+Control the YouTube app on your TV (smart TV, Chromecast, game console...).
+
+```bash
+ytm tv pair CODE        # pair once; saves tv_auth.json (gitignored)
+ytm tv play VIDEO_ID    # play a video
+ytm tv pause            # also: resume, next, previous
+ytm tv volume 30        # 0-100
+```
+
+To get the code, open YouTube on the TV → **Settings → Link with TV code**.
+The YouTube app must be open on the TV when you send a command.
+
+> **Warning:** this uses the YouTube Lounge API through
+> [pyytlounge](https://github.com/FabioGNR/pyytlounge). It is unofficial and
+> undocumented, so it may break without notice. It doesn't use the Data API or
+> your Google login, and it doesn't count against your quota.
+
+`tv_auth.json` holds the TV's login token. Treat it like `token.json`: don't
+share or commit it.
+
 ## Tests
 
 ```bash

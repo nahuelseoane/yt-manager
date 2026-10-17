@@ -1,11 +1,14 @@
 """Command-line interface: `ytm <command> ...`."""
 
 import argparse
+import asyncio
 import sys
 from pathlib import Path
 
+import aiohttp
 from googleapiclient.errors import HttpError
 
+from ytmanager import tv
 from ytmanager.auth import build_service
 from ytmanager.client import YouTubeClient, find_duplicates
 from ytmanager.export import export_to_csv
@@ -68,6 +71,81 @@ def cmd_remove_duplicates(client: YouTubeClient, args: argparse.Namespace) -> No
     print(f"Removed {len(duplicates)} duplicate(s).")
 
 
+# --- TV commands (Lounge API, no Data API client needed) ---
+
+
+def run_tv(action: tv.Action) -> None:
+    auth = tv.load_auth(tv.AUTH_FILE)  # fails before opening any connection
+
+    async def go() -> None:
+        async with tv.make_api() as api:
+            await tv.send(api, auth, tv.AUTH_FILE, action)
+
+    asyncio.run(go())
+
+
+def cmd_tv_pair(args: argparse.Namespace) -> None:
+    async def go() -> str:
+        async with tv.make_api() as api:
+            return await tv.pair(api, args.code, tv.AUTH_FILE)
+
+    name = asyncio.run(go())
+    print(f"Paired with {name}. Saved to {tv.AUTH_FILE}")
+
+
+def cmd_tv_play(args: argparse.Namespace) -> None:
+    run_tv(lambda api: api.play_video(args.video_id))
+    print(f"Playing {args.video_id}")
+
+
+def cmd_tv_pause(args: argparse.Namespace) -> None:
+    run_tv(lambda api: api.pause())
+
+
+def cmd_tv_resume(args: argparse.Namespace) -> None:
+    run_tv(lambda api: api.play())
+
+
+def cmd_tv_next(args: argparse.Namespace) -> None:
+    run_tv(lambda api: api.next())
+
+
+def cmd_tv_previous(args: argparse.Namespace) -> None:
+    run_tv(lambda api: api.previous())
+
+
+def cmd_tv_volume(args: argparse.Namespace) -> None:
+    run_tv(lambda api: api.set_volume(args.level))
+    print(f"Volume set to {args.level}")
+
+
+def volume_level(value: str) -> int:
+    level = int(value)
+    if not 0 <= level <= 100:
+        raise argparse.ArgumentTypeError("volume must be between 0 and 100")
+    return level
+
+
+def add_tv_parser(sub) -> None:
+    tv_parser = sub.add_parser("tv", help="Control the YouTube app on your TV")
+    tv_sub = tv_parser.add_subparsers(dest="tv_command", required=True)
+
+    def add(name, func, help_text):
+        p = tv_sub.add_parser(name, help=help_text)
+        p.set_defaults(func=func, needs_youtube=False)
+        return p
+
+    add("pair", cmd_tv_pair, "Pair with a TV code").add_argument("code")
+    add("play", cmd_tv_play, "Play a video on the TV").add_argument("video_id")
+    add("pause", cmd_tv_pause, "Pause playback")
+    add("resume", cmd_tv_resume, "Resume playback")
+    add("next", cmd_tv_next, "Next video")
+    add("previous", cmd_tv_previous, "Previous video")
+    add("volume", cmd_tv_volume, "Set volume (0-100)").add_argument(
+        "level", type=volume_level
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ytm", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -102,6 +180,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.set_defaults(func=cmd_remove_duplicates)
 
+    add_tv_parser(sub)
+
     return parser
 
 
@@ -115,10 +195,22 @@ def format_http_error(error: HttpError) -> str:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     try:
-        client = YouTubeClient(build_service(CLIENT_SECRET, TOKEN))
-        args.func(client, args)
+        if getattr(args, "needs_youtube", True):
+            client = YouTubeClient(build_service(CLIENT_SECRET, TOKEN))
+            args.func(client, args)
+        else:
+            args.func(args)
     except HttpError as e:
         print(format_http_error(e), file=sys.stderr)
+        raise SystemExit(1)
+    except tv.NotPairedError:
+        print("Run `ytm tv pair CODE` first.", file=sys.stderr)
+        raise SystemExit(1)
+    except tv.TVError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        raise SystemExit(1)
+    except (aiohttp.ClientError, TimeoutError) as e:
+        print(f"Error: couldn't reach the YouTube TV service ({e})", file=sys.stderr)
         raise SystemExit(1)
 
 

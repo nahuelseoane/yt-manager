@@ -11,6 +11,8 @@ developer moving into Python automation / QA automation.
 - `src/ytmanager/client.py`: `YouTubeClient`, a thin wrapper around the API that
   returns dataclasses (`Playlist`, `Video`). Receives the service by injection.
 - `src/ytmanager/export.py`: CSV export.
+- `src/ytmanager/tv.py`: TV remote via the unofficial Lounge API (pyytlounge).
+  Separate from the Data API: no OAuth, auth state in `tv_auth.json`.
 - `src/ytmanager/cli.py`: argparse subcommands. Keep it thin: parse args, call the
   client, print.
 - `tests/`: pytest with `tests/fakes.py` (fake service mimicking the
@@ -33,7 +35,7 @@ developer moving into Python automation / QA automation.
 
 ## Safety
 
-- Never commit, print, or log `client_secret.json` or `token.json`.
+- Never commit, print, or log `client_secret.json`, `token.json` or `tv_auth.json`.
 - Commands that delete or modify playlists must ask for confirmation
   (or offer a `--dry-run`) before calling the API.
 

@@ -1,6 +1,7 @@
 # Secrets: never commit these
 client_secret.json
 token.json
+tv_auth.json
 
 # Python
 __pycache__/

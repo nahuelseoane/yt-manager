@@ -10,6 +10,7 @@ requires-python = ">=3.12"
 dependencies = [
     "google-api-python-client>=2.100",
     "google-auth-oauthlib>=1.2",
+    "pyytlounge>=3.4,<4",  # unofficial API: pin the major version
 ]
 
 [project.optional-dependencies]
